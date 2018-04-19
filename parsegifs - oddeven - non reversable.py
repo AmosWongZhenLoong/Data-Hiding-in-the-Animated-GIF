@@ -117,6 +117,14 @@ def readLogicalScreenDescriptor(filename):
 
         return (width,height,bgColor,pixelaspectratio)
 
+def getCharCapacity(delayTimeCart):
+    # calculate how many characters can be stored
+    # return: number of characters that can be stored
+    frameCount = len(delayTimeCart)
+    msgHeader = 8       # 8 bits to store msg length
+    msgBits = frameCount - msgHeader    # number of bits remaining to store the message
+    return math.floor(msgBits // 8)
+
 def msg2bits(msg):
     # convert text to bitstream
     # output: bitstream
@@ -163,7 +171,6 @@ graphicControl1 = None      # index location of the first graphic control block
 GCBCart = None      # array of starting indexes of graphic control blocks
 delayTimeCart = None    # array of delay time values for each graphic control block
 end = None      # the end position of the last frame image data
-frameCount = None       # the total number of frames
 charCount = None        # total number of characters able to be stored
 
 # input variables
@@ -179,23 +186,22 @@ width,height,bgColor,pixelaspectratio = readLogicalScreenDescriptor(filename)
 
 graphicControl1 = filescan(filename)
 GCBCart, delayTimeCart, end = frameScan(filename,graphicControl1)
-frameCount = len(delayTimeCart)
 
 print(GCBCart)
 print(delayTimeCart)
 
-# calculate how many characters can be stored
-charCount = (frameCount - 8) / 8
-if charCount % 1 != 0:
-    charCount = math.floor(charCount)
-print('the maximum character limit is: ' + str(charCount))
+charCount = getCharCapacity(delayTimeCart)
 
 # let the user input a message
-msg = str(input('type your message here: '))
-if len(msg) > charCount:
-    print('message is too many characters long')
-    time.sleep(3)
-    quit()
+while True:
+    print('maximum characters: %d' %(charCount))
+    msg = str(input('type your message here: '))
+    if len(msg) > charCount:
+        print('message is too many characters long')
+        print('\n')
+        continue
+    else:
+        break
 
 # message length to bits
 msgCount = len(msg) * 8
