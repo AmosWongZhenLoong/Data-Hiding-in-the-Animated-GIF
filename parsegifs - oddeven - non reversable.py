@@ -4,11 +4,14 @@ import codecs
 import math
 import time
 
+
 def intFromBytes(someBytes, byteOrder):
     return int.from_bytes(someBytes, byteorder=byteOrder)
 
+
 def intToBytes(someInt, byteOrder):
     return someInt.to_bytes(2, byteorder=byteOrder, signed=False)
+
 
 def filescan(filename):
     # scan through the entire file once to find the positions of all the blocks
@@ -27,8 +30,7 @@ def filescan(filename):
                 index += 1
             except:
                 index += 1
-            if index % 100000 == 0:
-                print(index)
+
 
 def frameScan(filename,index):
     # parse bytes in the file of choice
@@ -80,6 +82,7 @@ def frameScan(filename,index):
             binary_file.close()
             return (GCBCart, delayTimeCart, index)
 
+
 def readHeader(filename):
     # header is always the first six bytes
     with open(filename,"rb") as binary_file:
@@ -87,6 +90,7 @@ def readHeader(filename):
         couple_bytes = binary_file.read(6) # read off 6 bytes
         binary_file.close()
         return (couple_bytes)
+
 
 def readLogicalScreenDescriptor(filename):
     # Logical Screen Descriptor comes after the header and takes the next 6 bytes
@@ -117,6 +121,7 @@ def readLogicalScreenDescriptor(filename):
 
         return (width,height,bgColor,pixelaspectratio)
 
+
 def getCharCapacity(delayTimeCart):
     # calculate how many characters can be stored
     # return: number of characters that can be stored
@@ -124,6 +129,7 @@ def getCharCapacity(delayTimeCart):
     msgHeader = 8       # 8 bits to store msg length
     msgBits = frameCount - msgHeader    # number of bits remaining to store the message
     return math.floor(msgBits // 8)
+
 
 def msg2bits(msg):
     # convert text to bitstream
@@ -136,11 +142,12 @@ def msg2bits(msg):
         bitstream = bitstream + charBin
     return bitstream
 
+
 def modifyDelayTimes(bitstream,delayTimeCart):
     # modify the delayTimeCart to store the message
-    ## message representation:
-    ### even number represents one(0)
-    ### odd number represents zero(1)
+        # message representation:
+            # even number represents one(0)
+            # odd number represents zero(1)
     for i in range(len(bitstream)):
         if int(bitstream[i]) == 0:   # is even
             if delayTimeCart[i] % 2 == 1:   # is odd
@@ -150,28 +157,17 @@ def modifyDelayTimes(bitstream,delayTimeCart):
                 delayTimeCart[i] = delayTimeCart[i] + 1
     return delayTimeCart
 
+
 def nicePrint(thing,thingName):
     print(thingName + ":")
     print(thing)
     print("\n")
 
+
 # file related variables
 filename = "rotatingearthCopy.gif"
 outfilename = 'modifiedgif.gif'
 byteOrder = 'little'
-
-# file extracted variables
-header = None
-width = None
-height = None
-bgColor = None
-pixelaspectratio = None
-graphicControl1 = None      # index location of the first graphic control block
-
-GCBCart = None      # array of starting indexes of graphic control blocks
-delayTimeCart = None    # array of delay time values for each graphic control block
-end = None      # the end position of the last frame image data
-charCount = None        # total number of characters able to be stored
 
 # input variables
 msg = "abc123"      # the message to be hidden
@@ -227,49 +223,4 @@ with open(filename,"r+b") as binary_file:
         binary_file.write(delayTimeCart[i])
     binary_file.close()
 
-graphicControl1 = filescan(filename)
-GCBCart, delayTimeCart, end = frameScan(filename,graphicControl1)
-print(GCBCart)
-print(delayTimeCart)
 
-
-'''
-with open("newtonscradle.gif","rb") as binary_file:
-    index = 0
-    for i in range(255):
-        binary_file.seek(index)
-        abyte = binary_file.read(4)
-        pprint(abyte)
-        index += 4
-'''
-
-'''
-with open("newtonscradle.gif","rb") as binary_file:
-    end = False
-    index = 0
-    while end == False:
-        binary_file.seek(index)
-        abyte = binary_file.read(1)
-        if abyte == "":
-            end = True
-        pprint(abyte)
-        pprint(type(abyte))
-        index += 1
-        
-
-'''
-'''
-""" reading files binary way """
-with open("newtonscradle.gif","rb") as binary_file:
-    data = binary_file.read()
-    pprint(data)
-'''
-
-
-
-'''
-with open("newtonscradle.gif","rb") as binary_file:
-    binary_file.seek(781)   # jump to 781th byte (application extension block)
-    couple_bytes = binary_file.read(14) # read off 14 bytes
-    pprint(couple_bytes)
-'''

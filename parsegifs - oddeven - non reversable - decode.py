@@ -27,8 +27,7 @@ def filescan(filename):
                 index += 1
             except:
                 index += 1
-            if index % 100000 == 0:
-                print(index)
+
 
 def frameScan(filename,index):
     binary_file = open(filename,'rb')
@@ -36,8 +35,6 @@ def frameScan(filename,index):
     delayTimeCart = []      # array of delay times for each frame
     fileTerminator = False
     while fileTerminator == False:
-        print("graphic control block")
-        print(index)
         binary_file.seek(index)
         GCBCart.append(index)
         
@@ -108,14 +105,6 @@ def readLogicalScreenDescriptor(filename):
 
         return (width,height,bgColor,pixelaspectratio)
 
-def readImageDescriptor():
-    #
-    next()
-
-def readImageData():
-    #
-    next()
-
 def nicePrint(thing,thingName):
     print(thingName + ":")
     print(thing)
@@ -126,29 +115,15 @@ filename = "rotatingearthCopy.gif"
 outfilename = 'modifiedgif.gif'
 byteOrder = 'little'
 
-# file extracted variables
-header = None
-width = None
-height = None
-bgColor = None
-pixelaspectratio = None
-graphicControl1 = None      # index location of the first graphic control block
-
-GCBCart = None      # array of starting indexes of graphic control blocks
-delayTimeCart = None    # array of delay time values for each graphic control block
-end = None      # the end position of the last frame image data
-frameCount = None       # the total number of frames
 charCount = None        # total number of characters able to be stored
 
 # input variables
 msg = "abc123"      # the message to be hidden
 msgCount = None     # the length of the message
-msgCountBin = None  # the length of the message (in binary)
+msgCountBin = ""  # the length of the message (in binary)
 bitstream = ""      # the bitstream to be embedded in the frame delays
 
 # decoding extracted variables
-msgCountBin = ""    # length of message hidden (in binary)
-msgCount = None     # length of message hidden (in integer)
 bitsToRead = None   # number of bits that contains the message
 msgExtractBin = ""  # extracted message in binary
 msgExtract = ""     # extracted message in text
