@@ -7,7 +7,7 @@ import time
 import FuncLib as FuncLib
 
 # file related variables
-filename = "rotatingearthCopy.gif"
+filename = "modifiedgif.gif"
 outfilename = 'modifiedgif.gif'
 byteOrder = 'little'
 
@@ -18,10 +18,10 @@ msgCountBin = None  # the length of the message (in binary)
 bitstream = ""      # the bitstream to be embedded in the frame delays
 
 
-GCBCart,delayTimeCart,endIndex = FuncLib.parse(filename)
+delayLocations,delayTimeCart,endIndex,GCBCart = FuncLib.parse(filename)
 delayTimeCart = FuncLib.intFromBytes(delayTimeCart,byteOrder)
 
-print(GCBCart)
+print(delayLocations)
 print(delayTimeCart)
 
 charCount = FuncLib.getCharCapacity(delayTimeCart)
@@ -51,11 +51,11 @@ delayTimeCart = FuncLib.modifyDelayTimes(bitstream,delayTimeCart)
 
 # change all values in delayTimeCart into bytes-like object
 for i in range(len(delayTimeCart)):
-    delayTimeCart[i] = FuncLib.intToBytes(delayTimeCart[i],byteOrder)
+    delayTimeCart[i] = FuncLib.intToBytes(delayTimeCart[i],byteOrder,2)
 
 print(delayTimeCart)
 # writing new delay times
-FuncLib.writeToFile(filename,delayTimeCart,GCBCart)
+FuncLib.writeToFile(filename,delayTimeCart,delayLocations)
 
 
 

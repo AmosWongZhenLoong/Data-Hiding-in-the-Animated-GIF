@@ -14,13 +14,14 @@ def intFromBytes(someBytes, byteOrder):
     return int.from_bytes(someBytes, byteorder=byteOrder)
 
 
-def intToBytes(someInt, byteOrder):
-    return someInt.to_bytes(2, byteorder=byteOrder, signed=False)
+def intToBytes(someInt, byteOrder, noBytes):
+    return someInt.to_bytes(noBytes, byteorder=byteOrder, signed=False)
 
 
 def parse(filename):
-    GCBCart = []
+    delayLocations = []
     delayTimeCart = []
+    GCBCart = []
 
     binary_file = open(filename, 'rb')
     binary_file.seek(0)
@@ -62,12 +63,13 @@ def parse(filename):
         identifier = binary_file.read(2)
         index += 2
         if identifier[0] == 33 and identifier[1] == 249:
+            GCBCart.append(index - 2)
             blocksize = binary_file.read(1)
             index += 1
             graphicsControlExtension = binary_file.read(blocksize[0])
 
             delayTimeCart.append(graphicsControlExtension[1:2])
-            GCBCart.append(index + 1)
+            delayLocations.append(index + 1)
 
             index += blocksize[0]
             blockTerminator = binary_file.read(1)
@@ -82,6 +84,8 @@ def parse(filename):
             if identifier[0] == 44:
                 imageDescriptor = binary_file.read(9)
                 index += 9
+            for i in range(len(imageDescriptor)):
+                print(imageDescriptor[i])
 
             # Table based image data
             LZW = binary_file.read(1)
@@ -102,7 +106,7 @@ def parse(filename):
 
     binary_file.close()
 
-    return GCBCart, delayTimeCart, endIndex
+    return delayLocations, delayTimeCart, endIndex, GCBCart
 
 
 def getCharCapacity(delayTimeCart):
@@ -141,9 +145,9 @@ def modifyDelayTimes(bitstream, delayTimeCart):
     return delayTimeCart
 
 
-def writeToFile(filename, delayTimeCart, GCBCart):
+def writeToFile(filename, delayTimeCart, delayLocations):
     with open(filename, "r+b") as binary_file:
         for i in range(len(delayTimeCart)):
-            binary_file.seek(GCBCart[i])
+            binary_file.seek(delayLocations[i])
             binary_file.write(delayTimeCart[i])
         binary_file.close()
