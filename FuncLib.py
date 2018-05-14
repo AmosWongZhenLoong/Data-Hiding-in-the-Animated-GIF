@@ -40,9 +40,13 @@ def parse(filename):
 
     # global color table
     if globalColorTableFlag == '1':
+        CTindex = index
         # handle parsing the global color table
         globalColorTable = binary_file.read(3 * (2 ** (int(globalColorTableSize, 2) + 1)))
-        index += 3 * (2 ** (int(globalColorTableSize, 2) + 1))
+        index += (3 * (2 ** (int(globalColorTableSize, 2) + 1)))
+    else:
+        CTindex = -1
+        globalColorTable = -1
 
     # application extension block
     identifier = binary_file.read(2)
@@ -51,22 +55,31 @@ def parse(filename):
         blocksize = binary_file.read(1)
         index += 1
         applicationExtension = binary_file.read(blocksize[0])
+        #print(applicationExtension)
         index += blocksize[0]
-        blockTerminator = binary_file.read(1)
+        print(index)
+        blocksize = binary_file.read(1)
         index += 1
-        while blockTerminator[0] != 0:
-            blockTerminator = binary_file.read(1)
-            index += 1
+        while blocksize[0] != 0:
+            applicationData = binary_file.read(blocksize[0])
+            print(applicationData)
+            index += blocksize[0] + 1
+            blocksize = binary_file.read(1)
 
     while True:
-        # graphics control extension
         identifier = binary_file.read(2)
+        if len(identifier)>1:
+            print(identifier[0],identifier[1])
+        else:
+            print(identifier[0])
         index += 2
-        if identifier[0] == 33 and identifier[1] == 249:
+        if identifier[0] == 33 and identifier[1] == 249:    # graphics control extension
             GCBCart.append(index - 2)
             blocksize = binary_file.read(1)
+            print(blocksize[0])
             index += 1
             graphicsControlExtension = binary_file.read(blocksize[0])
+            print(graphicsControlExtension[0])
 
             delayTimeCart.append(graphicsControlExtension[1:2])
             delayLocations.append(index + 1)
@@ -80,23 +93,40 @@ def parse(filename):
 
             # img descriptor
             identifier = binary_file.read(1)
+            print(identifier[0])
             index += 1
             if identifier[0] == 44:
                 imageDescriptor = binary_file.read(9)
                 index += 9
-            for i in range(len(imageDescriptor)):
-                print(imageDescriptor[i])
+            print(imageDescriptor)
 
             # Table based image data
             LZW = binary_file.read(1)
+            print(LZW[0])
             index += 1
             blocksize = binary_file.read(1)
             index += 1
             while blocksize[0] != 0:
                 imgData = binary_file.read(blocksize[0])
+                #textfile = open('imgdataEARTHdebug.txt','a+')
+                #or byte in range(len(imgData)):
+                #    textfile.write(str(imgData[byte])+" ")
+                #    if byte%40 == 0:
+                #        textfile.write('\n')
+                #textfile.write('\n')
+                #textfile.write('\n')
                 index += blocksize[0]
                 blocksize = binary_file.read(1)
                 index += 1
+            print('\n')
+
+        elif identifier[0] == 33 and identifier[1] == 254:      # comment extension block
+            blocksize = binary_file.read(1)
+            index += 1
+            while blocksize[0] != 0:
+                commentData = binary_file.read(blocksize[0])
+                index += blocksize[0] + 1
+                blocksize = binary_file.read(1)
 
         elif identifier[0] == 59:
             print('parse complete')
@@ -106,7 +136,7 @@ def parse(filename):
 
     binary_file.close()
 
-    return delayLocations, delayTimeCart, endIndex, GCBCart
+    return delayLocations, delayTimeCart, endIndex, GCBCart, CTindex, globalColorTableSize, globalColorTable
 
 
 def getCharCapacity(delayTimeCart):

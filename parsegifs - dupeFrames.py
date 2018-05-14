@@ -11,7 +11,7 @@ outputfilename = 'modifiedgif.gif'
 byteOrder = 'little'
 
 
-delayLocations,delayTimeCart,endIndex,GCBCart = FuncLib.parse(filename)
+delayLocations,delayTimeCart,endIndex,GCBCart,CTindex,globalColorTableSize,globalColorTable = FuncLib.parse(filename)
 delayTimeCart = FuncLib.intFromBytes(delayTimeCart,byteOrder)
 
 print(delayLocations)
@@ -23,38 +23,77 @@ binary_file = open(filename,'r+b')
 
 # write the first part of the file up till the first graphics control block
 binary_file.seek(0)
-initialChunk = binary_file.read(GCBCart[0]-1)
+initialChunk = binary_file.read(GCBCart[0])
 newFile.write(initialChunk)
 i = 1
 while i < len(GCBCart):
-    uChunk = binary_file.read(13)
-    u21Chunk = binary_file.read(2)
-    u22Chunk = binary_file.read(2)
-    u3Chunk = binary_file.read(1)
-    lChunk = binary_file.read(GCBCart[i]-GCBCart[i-1]-18)
+    uChunk = binary_file.read(3)        # gcb part 1
+    pfields = binary_file.read(1)       # packed fields
+    uuChunk = binary_file.read(5)       # gcb part 2 + img descriptor identifier
+    u11Chunk = binary_file.read(2)      # image left position
+    u12Chunk = binary_file.read(2)      # image top position
+    u21Chunk = binary_file.read(2)      # image width
+    u22Chunk = binary_file.read(2)      # image height
+    u3Chunk = binary_file.read(1)       # packed fields
+    lChunk = binary_file.read(GCBCart[i]-GCBCart[i-1]-18)   # image data
     newFile.write(uChunk)
+    pfields = FuncLib.intToBytes(5,byteOrder,1)
+    newFile.write(pfields)
+    newFile.write(uuChunk)
+    newFile.write(u11Chunk)
+    newFile.write(u12Chunk)
     newFile.write(u21Chunk)
     newFile.write(u22Chunk)
     newFile.write(u3Chunk)
     newFile.write(lChunk)
+    '''print(uChunk)
+    print(pfields)
+    print(uuChunk)
+    print(u11Chunk)
+    print(u12Chunk)
+    print(u21Chunk)
+    print(u22Chunk)
+    print(u3Chunk)'''
 
-    u21Chunk = FuncLib.intToBytes(1,byteOrder,2)
-    u22Chunk = FuncLib.intToBytes(1, byteOrder,2)
+    #u11Chunk = FuncLib.intToBytes(95, byteOrder, 2)
+    #u12Chunk = FuncLib.intToBytes(95, byteOrder, 2)
+    u21Chunk = FuncLib.intToBytes(1, byteOrder, 2)
+    u22Chunk = FuncLib.intToBytes(1, byteOrder, 2)
 
     newFile.write(uChunk)
+    newFile.write(pfields)
+    newFile.write(uuChunk)
+    newFile.write(u11Chunk)
+    newFile.write(u12Chunk)
     newFile.write(u21Chunk)
     newFile.write(u22Chunk)
     newFile.write(u3Chunk)
-    lChunk = FuncLib.intToBytes(8, byteOrder, 1)
+
+    lChunk = FuncLib.intToBytes(8, byteOrder, 1)    #LZW
     newFile.write(lChunk)
-    lChunk = FuncLib.intToBytes(1, byteOrder, 1)
+    lChunk = FuncLib.intToBytes(4, byteOrder, 1)    #blocksize
     newFile.write(lChunk)
-    lChunk = FuncLib.intToBytes(255, byteOrder, 1)
+    lChunk = FuncLib.intToBytes(0, byteOrder, 1)    #byte1
     newFile.write(lChunk)
-    lChunk = FuncLib.intToBytes(0, byteOrder, 1)
+    lChunk = FuncLib.intToBytes(255, byteOrder, 1)  #byte2
     newFile.write(lChunk)
+    lChunk = FuncLib.intToBytes(5, byteOrder, 1)    #byte3
+    newFile.write(lChunk)
+    lChunk = FuncLib.intToBytes(4, byteOrder, 1)    #byte4
+    newFile.write(lChunk)
+
+    lChunk = FuncLib.intToBytes(0, byteOrder, 1)    #end of LZW
+    newFile.write(lChunk)
+
+    '''print(uChunk)
+    print(u11Chunk)
+    print(u12Chunk)
+    print(u21Chunk)
+    print(u22Chunk)
+    print(u3Chunk)'''
 
     i = i + 1
+
 while True:
     fileChunk = binary_file.read(1)
     if not fileChunk:
