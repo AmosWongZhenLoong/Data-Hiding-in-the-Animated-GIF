@@ -2,30 +2,33 @@ from pprint import pprint
 import struct
 import codecs
 import time
+import timeit
 
 import FuncLib as FuncLib
 
 
 
-filename = "oilpump.gif"
-outputfilename = 'modifiedgif.gif'
-reconstructedfilename = 'reconstructedgif.gif'
+filename = "oilpump10.gif"
+outputfilename = 'E_%s' % filename
+reconstructedfilename = 'R_%s' % filename
 byteOrder = 'little'
-
-# get essentials
-delayLocations,delayTimeCart,endIndex,GCBCart,CTindex,globalColorTableSize,globalColorTable,frameTypeCart = FuncLib.parse(filename)
-delayTimeCart = FuncLib.intFromBytes(delayTimeCart,byteOrder)
-
-print(delayLocations)
-print(delayTimeCart)
-print(GCBCart)
-print(frameTypeCart)
 
 # choose encode or decode
 print("do you want to do encoding or decoding?")
 action = str(input("type e for encoding, type d for decoding: "))
 
 if action == 'e':       # do encoding
+    etime = timeit.timeit()
+
+    # get essentials
+    delayLocations, delayTimeCart, endIndex, GCBCart, CTindex, globalColorTableSize, globalColorTable, frameTypeCart = FuncLib.parse(
+        filename)
+    delayTimeCart = FuncLib.intFromBytes(delayTimeCart, byteOrder)
+
+    print(delayLocations)
+    print(delayTimeCart)
+    print(GCBCart)
+    print(frameTypeCart)
 
     # web browser compatibility selection
     print("Different browsers support different minimum delay values")
@@ -104,9 +107,22 @@ if action == 'e':       # do encoding
 
     newFile.close()
     binary_file.close()
-    print("process complete")
+    etime = timeit.timeit() - etime
+    print("embed process completed in %.3f " % etime)
 
 elif action == 'd':     # do decoding
+    dtime = timeit.timeit()
+
+    # get essentials
+    delayLocations, delayTimeCart, endIndex, GCBCart, CTindex, globalColorTableSize, globalColorTable, frameTypeCart = FuncLib.parse(
+        outputfilename)
+    delayTimeCart = FuncLib.intFromBytes(delayTimeCart, byteOrder)
+
+    print(delayLocations)
+    print(delayTimeCart)
+    print(GCBCart)
+    print(frameTypeCart)
+
     # get some information necessary for msg decoding and original GIF reconstruction
     bitValuesUsed,oriDelayTimeCart = FuncLib.decodePrep(delayTimeCart,frameTypeCart)
     bitValuesUsed.sort()
@@ -123,7 +139,7 @@ elif action == 'd':     # do decoding
 
     # reconstruct original GIF image
     file = open(reconstructedfilename,'a+b')
-    file2 = open('modifiedgif.gif','r+b')
+    file2 = open(outputfilename,'r+b')
 
     # write everything up till the first graphics control block
     file2.seek(0)
@@ -163,13 +179,15 @@ elif action == 'd':     # do decoding
         file2.seek(endIndex - 1)
         chunk = file2.read(1)
         while chunk:
+            print('i write')
             file.write(chunk)
             chunk = file2.read(1)
 
     file.close()
     file2.close()
 
-    print('decode complete')
+    dtime = timeit.timeit() - dtime
+    print('decode completed in %.3f' % dtime)
 
 
 

@@ -58,29 +58,21 @@ def parse(filename):
         applicationExtension = binary_file.read(blocksize[0])
         #print(applicationExtension)
         index += blocksize[0]
-        print(index)
         blocksize = binary_file.read(1)
         index += 1
         while blocksize[0] != 0:
             applicationData = binary_file.read(blocksize[0])
-            print(applicationData)
             index += blocksize[0] + 1
             blocksize = binary_file.read(1)
 
     while True:
         identifier = binary_file.read(2)
-        if len(identifier)>1:
-            print(identifier[0],identifier[1])
-        else:
-            print(identifier[0])
         index += 2
         if identifier[0] == 33 and identifier[1] == 249:    # graphics control extension
             GCBCart.append(index - 2)
             blocksize = binary_file.read(1)
-            print(blocksize[0])
             index += 1
             graphicsControlExtension = binary_file.read(blocksize[0])
-            print(graphicsControlExtension[0])
 
             delayTimeCart.append(graphicsControlExtension[1:2])
             delayLocations.append(index + 1)
@@ -94,16 +86,13 @@ def parse(filename):
 
             # img descriptor
             identifier = binary_file.read(1)
-            print(identifier[0])
             index += 1
             if identifier[0] == 44:
                 imageDescriptor = binary_file.read(9)
                 index += 9
-            print(imageDescriptor)
 
             # Table based image data
             LZW = binary_file.read(1)
-            print(LZW[0])
             index += 1
             blocksize = binary_file.read(1)
 
@@ -119,7 +108,6 @@ def parse(filename):
                 index += blocksize[0]
                 blocksize = binary_file.read(1)
                 index += 1
-            print('\n')
 
         elif identifier[0] == 33 and identifier[1] == 254:      # comment extension block
             blocksize = binary_file.read(1)
