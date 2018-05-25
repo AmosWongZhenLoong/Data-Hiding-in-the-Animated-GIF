@@ -350,12 +350,12 @@ def decodePrep(delayTimeCart,frameTypeCart):
                 bitValuesUsed.append(delayTimeCart[i])
         elif frameTypeCart[i] == 0 and len(tempDelay) != 0:
             oriDelayTimeCart.append(tempDelay)
-            tempDelay = []
+            tempDelay.clear()
             tempDelay.append(delayTimeCart[i])
         elif i == len(delayTimeCart) - 1:
             tempDelay.append(delayTimeCart[i])
             oriDelayTimeCart.append(tempDelay)
-            delay = []
+            tempDelay.clear()
             if delayTimeCart[i] not in bitValuesUsed:
                 bitValuesUsed.append(delayTimeCart[i])
 
