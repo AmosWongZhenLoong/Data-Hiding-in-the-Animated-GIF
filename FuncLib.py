@@ -1,11 +1,12 @@
-from pprint import pprint
-import struct
-import codecs
 import math
-import time
+
 
 
 def intFromBytes(someBytes, byteOrder):
+    # converts bytes to integer
+    # input: bytes (string)
+    # output: integer representation of the bytes
+
     if str(type(someBytes)) == "<class 'list'>":
         for i in range(len(someBytes)):
             someBytes[i] = int.from_bytes(someBytes[i], byteorder=byteOrder)
@@ -15,44 +16,63 @@ def intFromBytes(someBytes, byteOrder):
 
 
 def intToBytes(someInt, byteOrder, noBytes):
+    # converts integer to bytes
+    # input: integer
+    # output: bytes representation of input integer
+
     return someInt.to_bytes(noBytes, byteorder=byteOrder, signed=False)
 
 
 def parse(filename):
+    # parse through the entire file and extracts all elements needed for data hiding
+    # decoding uses the same parse function, however only some elements are used
+    # todo: remove global color table as it is not required anymore
+    # todo: refactoring
+    # input: the filename of the file to be parsed
+    # output: delayLocations - (array of indexes which points to each Delay Time value)
+    # delayTimeCart - (array of every Delay Time values in the file)
+    # endIndex - (index of the last byte in the file)
+    # GCBCart - (array of indexes which points to every Graphics Control Block in the file)
+    # CTindex - (index of the position of the color table in the file)
+    # globalColorTableSize - (the number of colors used for the global color table)
+    # globalColorTable - (array of the entire global color table)
+    # frameTypeCart - only used for decoding (array of the frame types of every frame in the file)
+
     delayLocations = []
     delayTimeCart = []
     GCBCart = []
     frameTypeCart = []
 
+    # open the file and seek to the beginning
     binary_file = open(filename, 'rb')
     binary_file.seek(0)
     index = 0
 
-    # header
+    # read the header
     header = binary_file.read(6)
     index += 6
 
-    # logical screen descriptor
+    # read the logical screen descriptor
     logicalScreenDescriptor = binary_file.read(7)
     index += 7
     LCDpacked = ('{:08b}'.format(logicalScreenDescriptor[4]))
     globalColorTableFlag = LCDpacked[-1]
     globalColorTableSize = LCDpacked[:3]
 
-    # global color table
+    # read the global color table
     if globalColorTableFlag == '1':
         CTindex = index
-        # handle parsing the global color table
+        # parse the global color table based on its size
         globalColorTable = binary_file.read(3 * (2 ** (int(globalColorTableSize, 2) + 1)))
         index += (3 * (2 ** (int(globalColorTableSize, 2) + 1)))
     else:
         CTindex = -1
         globalColorTable = -1
 
-    # application extension block
+    # read the application extension block
     identifier = binary_file.read(2)
     index += 2
-    if identifier[0] == 33 and identifier[1] == 255:
+    if identifier[0] == 33 and identifier[1] == 255:        # the identifiers for app extension block
         blocksize = binary_file.read(1)
         index += 1
         applicationExtension = binary_file.read(blocksize[0])
@@ -65,18 +85,22 @@ def parse(filename):
             index += blocksize[0] + 1
             blocksize = binary_file.read(1)
 
+    # the start of the first graphics control block
+    # repeat for every graphics control block
     while True:
         identifier = binary_file.read(2)
         index += 2
-        if identifier[0] == 33 and identifier[1] == 249:    # graphics control extension
+        if identifier[0] == 33 and identifier[1] == 249:    # identifier for graphics control extension
             GCBCart.append(index - 2)
             blocksize = binary_file.read(1)
             index += 1
             graphicsControlExtension = binary_file.read(blocksize[0])
 
+            # collect the Delay Value and its location in the file
             delayTimeCart.append(graphicsControlExtension[1:2])
             delayLocations.append(index + 1)
 
+            # parse the remaining of the graphics control block
             index += blocksize[0]
             blockTerminator = binary_file.read(1)
             index += 1
@@ -84,32 +108,33 @@ def parse(filename):
                 blockTerminator = binary_file.read(1)
                 index += 1
 
-            # img descriptor
-            identifier = binary_file.read(1)
+            identifier = binary_file.read(1)        # identifier for image descriptor
             index += 1
             if identifier[0] == 44:
                 imageDescriptor = binary_file.read(9)
                 index += 9
 
-            # Table based image data
+            # read table based image data
             LZW = binary_file.read(1)
             index += 1
             blocksize = binary_file.read(1)
 
-            # takes note of the transparent 1x1 pixel frames (for decoding purposes)
+            # takes note of the transparent 1x1 pixel frames
+            # only for decoding purposes
             if blocksize[0] == 4:
                 frameTypeCart.append(1)
             else:
                 frameTypeCart.append(0)
-
             index += 1
+
+            # parse the image data portion of the file
             while blocksize[0] != 0:
                 imgData = binary_file.read(blocksize[0])
                 index += blocksize[0]
                 blocksize = binary_file.read(1)
                 index += 1
 
-        elif identifier[0] == 33 and identifier[1] == 254:      # comment extension block
+        elif identifier[0] == 33 and identifier[1] == 254:      # identifier for comment extension block
             blocksize = binary_file.read(1)
             index += 1
             while blocksize[0] != 0:
@@ -121,6 +146,7 @@ def parse(filename):
             print('parse complete')
             break
 
+    # collect the index of the end of the file
     endIndex = index
 
     binary_file.close()
@@ -128,18 +154,10 @@ def parse(filename):
     return delayLocations, delayTimeCart, endIndex, GCBCart, CTindex, globalColorTableSize, globalColorTable, frameTypeCart
 
 
-def getCharCapacity(delayTimeCart):
-    # calculate how many characters can be stored
-    # return: number of characters that can be stored
-    frameCount = len(delayTimeCart)
-    msgHeader = 8  # 8 bits to store msg length
-    msgBits = frameCount - msgHeader  # number of bits remaining to store the message
-    return math.floor(msgBits // 8)
-
-
 def msg2bits(msg):
     # convert text to bitstream
     # output: bitstream
+
     bitstream = ""
     for i in range(len(msg)):
         char = msg[i]
@@ -149,40 +167,6 @@ def msg2bits(msg):
     return bitstream
 
 
-def msgfrombits(bits):
-    # convert bitstream to text
-    # output: text
-    msg = ""
-    for i in range(len(bits)):
-        if i % 8 == 0:
-            byte = bits[i:i+8]
-            char = chr(int(byte,2))
-            msg = msg + char
-    return msg
-
-
-def modifyDelayTimes(bitstream, delayTimeCart):
-    # modify the delayTimeCart to store the message
-    # message representation:
-    # even number represents one(0)
-    # odd number represents zero(1)
-    for i in range(len(bitstream)):
-        if int(bitstream[i]) == 0:  # is even
-            if delayTimeCart[i] % 2 == 1:  # is odd
-                delayTimeCart[i] = delayTimeCart[i] + 1
-        else:
-            if delayTimeCart[i] % 2 == 0:  # is even
-                delayTimeCart[i] = delayTimeCart[i] + 1
-    return delayTimeCart
-
-
-def writeToFile(filename, delayTimeCart, delayLocations):
-    with open(filename, "r+b") as binary_file:
-        for i in range(len(delayTimeCart)):
-            binary_file.seek(delayLocations[i])
-            binary_file.write(delayTimeCart[i])
-        binary_file.close()
-
 
 def encode(delayTimeCart,msg,minDelay):
     # encodes the structure of the new frames in the form of delay values
@@ -190,6 +174,7 @@ def encode(delayTimeCart,msg,minDelay):
     # minimum frame delay safari and IE: 0.06s
     # info as of: http://nullsleep.tumblr.com/post/16524517190/animated-gif-minimum-frame-delay-browser
     # error handle -1: insufficient capacity to store message
+
     newDelayTimeCart = []
     group = []
 
@@ -236,6 +221,9 @@ def encode(delayTimeCart,msg,minDelay):
 
 
 def writeOriginal(newFile, binary_file, GCBCart, i, byteOrder, delay):
+    # writes an original frame to the new file
+    # disposal method and Delay Value is modified in the process
+
     binary_file.seek(GCBCart[i-1])
     uChunk = binary_file.read(3)  # gcb identifier + blocksize
     packedfields = binary_file.read(1)  # packed fields
@@ -250,7 +238,7 @@ def writeOriginal(newFile, binary_file, GCBCart, i, byteOrder, delay):
     # changing disposal method so that each frame remains on screen
     packedfields = intToBytes(5, byteOrder, 1)
 
-    # change delay
+    # change the delay
     if delay != -1:
         dtChunk = intToBytes(delay,byteOrder,2)  # delay time
 
@@ -270,6 +258,9 @@ def writeOriginal(newFile, binary_file, GCBCart, i, byteOrder, delay):
 
 
 def writeTransparent(newFile, binary_file, GCBCart, i, byteOrder, delay):
+    # writes a 1-pixel transparent frame to the new file
+    # disposal method and Delay Value are changed accordingly
+
     binary_file.seek(GCBCart[i-1])
     uChunk = binary_file.read(3)  # gcb identifier + blocksize
     packedfields = binary_file.read(1)  # packed fields
@@ -283,7 +274,7 @@ def writeTransparent(newFile, binary_file, GCBCart, i, byteOrder, delay):
     # changing disposal method so that each frame remains on screen
     packedfields = intToBytes(5, byteOrder, 1)
 
-    # change delay
+    # change the delay
     dtChunk = intToBytes(delay, byteOrder, 2)  # delay time
 
     # test change transparent color flag
@@ -303,7 +294,7 @@ def writeTransparent(newFile, binary_file, GCBCart, i, byteOrder, delay):
     newFile.write(u22Chunk)
     newFile.write(packedfields2)
 
-    # writing image data of a transparent frame
+    # writing image data of a 1-pixel transparent frame
     lChunk = intToBytes(8, byteOrder, 1)    #LZW
     newFile.write(lChunk)
     lChunk = intToBytes(4, byteOrder, 1)    #blocksize
@@ -324,6 +315,7 @@ def getHidingCapacity(delayTimeCart,minDelay):
     # calculates average hiding capacity based on:
     # total number of frames, average additional frames per frame, minimum delay specified by user
     # returns average characters that can be hidden
+
     totalAvgPerFrame = 0
     for i in range(len(delayTimeCart)):
         frameCap = delayTimeCart[i]
@@ -337,22 +329,34 @@ def getHidingCapacity(delayTimeCart,minDelay):
 
 
 def decodePrep(delayTimeCart,frameTypeCart):
+    # obtains Delay Values from the modified file
+    # frametype 0 - represents and original frame
+    # frametype 1 - represents a 1-pixel transparent frame
+
     bitValuesUsed = []
     oriDelayTimeCart = []
     tempDelay = []
 
     for i in range(len(delayTimeCart)):
         if frameTypeCart[i] == 0 and len(tempDelay) == 0:
+            # original frame found and there are no existing groups being processed
             tempDelay.append(delayTimeCart[i])
         elif frameTypeCart[i] == 1 and len(tempDelay) != 0:
+            # transparent frame found. add it to the current group being processed
             tempDelay.append(delayTimeCart[i])
             if delayTimeCart[i] not in bitValuesUsed:
+                # gets the two bit values that were used to represent 0 and 1
                 bitValuesUsed.append(delayTimeCart[i])
         elif frameTypeCart[i] == 0 and len(tempDelay) != 0:
+            # original frame found but there is an existing group being processed
+            # end and save the current group
+            # start processing a new group
             oriDelayTimeCart.append(tempDelay)
             tempDelay.clear()
             tempDelay.append(delayTimeCart[i])
         elif i == len(delayTimeCart) - 1:
+            # last frame reached
+            # end and save the current group
             tempDelay.append(delayTimeCart[i])
             oriDelayTimeCart.append(tempDelay)
             tempDelay.clear()
@@ -366,6 +370,10 @@ def decodePrep(delayTimeCart,frameTypeCart):
 
 
 def decode(bitValuesUsed,frameTypeCart,delayTimeCart):
+    # retrieves the hidden message by obtaining the Delay Value for each frame
+    # which is transparent type. The Delay Value indicates if its a 0-bit or 1-bit
+    # returns the retrieved message text
+
     bits = ""
     msg = ""
 
@@ -384,4 +392,49 @@ def decode(bitValuesUsed,frameTypeCart,delayTimeCart):
     return msg
 
 
+# functions graveyard (rip)
+'''
+def getCharCapacity(delayTimeCart):
+    # calculates how many characters can be stored
+    # return: number of characters that can be stored
+    frameCount = len(delayTimeCart)
+    msgHeader = 8  # 8 bits to store msg length
+    msgBits = frameCount - msgHeader  # number of bits remaining to store the message
+    return math.floor(msgBits // 8)
+
+
+def msgfrombits(bits):
+    # convert bitstream to text
+    # output: text
+    msg = ""
+    for i in range(len(bits)):
+        if i % 8 == 0:
+            byte = bits[i:i+8]
+            char = chr(int(byte,2))
+            msg = msg + char
+    return msg
+
+
+def modifyDelayTimes(bitstream, delayTimeCart):
+    # modify the delayTimeCart to store the message
+    # message representation:
+    # even number represents one(0)
+    # odd number represents zero(1)
+    for i in range(len(bitstream)):
+        if int(bitstream[i]) == 0:  # is even
+            if delayTimeCart[i] % 2 == 1:  # is odd
+                delayTimeCart[i] = delayTimeCart[i] + 1
+        else:
+            if delayTimeCart[i] % 2 == 0:  # is even
+                delayTimeCart[i] = delayTimeCart[i] + 1
+    return delayTimeCart
+
+
+def writeToFile(filename, delayTimeCart, delayLocations):
+    with open(filename, "r+b") as binary_file:
+        for i in range(len(delayTimeCart)):
+            binary_file.seek(delayLocations[i])
+            binary_file.write(delayTimeCart[i])
+        binary_file.close()
+'''
 
